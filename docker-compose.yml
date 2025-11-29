@@ -1,0 +1,39 @@
+services:
+  ai_service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ai_service
+    ports:
+      - "8001:8000"
+    env_file:
+      - .env
+    environment:
+      - PYTHONPATH=/app
+      - PYTHONUNBUFFERED=1
+      - MAX_WORKERS=8
+      - WEB_CONCURRENCY=8
+    volumes:
+      - ./AI_Builder:/app/AI_Builder
+      - ./start_server.py:/app/start_server.py
+    # ✅ FIXED: Multiple workers, no reload in production
+    command: >
+      uvicorn AI_Builder.main_fastapi:app 
+      --host 0.0.0.0 
+      --port 8000 
+      --workers 8 
+      --loop asyncio
+      --no-access-log
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    networks:
+      - ai-web-builder_ai-web-builder-network
+
+networks:
+  ai-web-builder_ai-web-builder-network:
+    external: true
